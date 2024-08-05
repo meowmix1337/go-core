@@ -55,3 +55,19 @@ func (d *Error) IsRetryable() bool {
 func (d *Error) GetContext() context.Context {
 	return d.Context
 }
+
+// Wrap returns a new error wrapping the given error
+func (d *Error) Wrap(err error) *Error {
+	return &Error{
+		Context:   d.Context,
+		Type:      d.Type,
+		Code:      d.Code,
+		Message:   d.Message,
+		Retryable: d.Retryable,
+		Err:       err,
+	}
+}
+
+func (d *Error) Unwrap() error {
+	return d.Err
+}
