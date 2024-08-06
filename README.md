@@ -1,18 +1,3 @@
-# derror
-This is just an Error wrapper for the Go Error interface. Please don't actually use this as this is for my own learning and testing purposes.
+# go-core
 
-## Add the dependency
-```
-go get github.com/meowmix1337/derror
-```
-
-## Usage
-Basic Error
-```go
-err := derror.New(context.Background(), derror.InternalServerCode, derror.InternalType, "failed to do something", errors.New("some error"))
-```
-
-Retryable Error
-```go
-err := derror.NewRetryable(context.Background(), derror.InternalServerCode, derror.InternalType, "failed to do something", errors.New("some error"))
-```
+General go core library for my personal use and learning
