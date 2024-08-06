@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/meowmix1337/derror"
+	"github.com/meowmix1337/go-core/derror"
 	"github.com/stretchr/testify/assert"
 )
 

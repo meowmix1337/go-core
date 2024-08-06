@@ -1,4 +1,4 @@
-module github.com/meowmix1337/derror
+module github.com/meowmix1337/go-core
 
 go 1.22.5
 
