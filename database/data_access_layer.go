@@ -27,9 +27,6 @@ type DatabaseAccessLayer interface {
 	// ExecTx executes a query that changes rows within a given transaction
 	ExecTx(ctx context.Context, tx *sqlx.Tx, query string, args ...interface{}) (sql.Result, error)
 
-	// BeginTx starts a new transaction
-	BeginTx(ctx context.Context) (*sqlx.Tx, error)
-
 	// CommitTx commits the current transaction
 	CommitTx(tx *sqlx.Tx) error
 
@@ -81,11 +78,6 @@ func (m *DBWrapper) Exec(ctx context.Context, query string, args ...interface{})
 // ExecTx executes a query that changes rows within a given transaction
 func (m *DBWrapper) ExecTx(ctx context.Context, tx *sqlx.Tx, query string, args ...interface{}) (sql.Result, error) {
 	return tx.ExecContext(ctx, query, args...)
-}
-
-// Begin starts a new transaction
-func (m *DBWrapper) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
-	return m.db.BeginTxx(ctx, nil)
 }
 
 // Commit commits the current transaction
