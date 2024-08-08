@@ -75,3 +75,28 @@ func (d *Database) ReadDB() *DBWrapper {
 func (d *Database) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
 	return d.writeDB.BeginTxx(ctx, nil)
 }
+
+// Transaction abstracts transaction handling. It begins a transaction, executes the given
+// function, and commits or rolls back the transaction based on whether an error is returned.
+func Transaction(ctx context.Context, db Database, fn func(*sqlx.Tx) error) error {
+	tx, err := db.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			log.Err(err).Msg("panic happened, rolling back")
+			_ = tx.Rollback()
+			panic(p) // Re-throw panic after rollback
+		} else if err != nil {
+			log.Err(err).Msg("failed to commit transaction, rolling back")
+			_ = tx.Rollback() // err is non-nil; don't change it
+		} else {
+			err = tx.Commit() // If Commit returns error, update err
+		}
+	}()
+
+	err = fn(tx)
+	return err
+}
