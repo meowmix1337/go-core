@@ -1,41 +1,53 @@
 package database
 
 import (
-	"context"
-	"database/sql"
-
 	"github.com/jmoiron/sqlx"
 )
 
-// DatabaseAccessLayer represents a database access layer interface
-type DatabaseAccessLayer interface {
-	// QueryRow executes a query that returns a single row
-	QueryRow(ctx context.Context, query string, args ...interface{}) *sqlx.Row
+// DBConnector is an interface that will allow users to use a writer or reader
+type DBConnector interface {
+	WriteDB() *DBWrapper
+	ReadDB() *DBWrapper
+}
 
-	// QueryRows executes a query that returns multiple rows
-	QueryRows(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+// Database represents the writer and reader DBs
+type Database struct {
+	writerDB *DBWrapper
+	readerDB *DBWrapper
+}
 
-	// Select queries multiple rows and will load the entire result all at once
-	Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+func NewDBConnector(driver, writerDSN, readerDSN string) (*Database, error) {
+	writer, err := sqlx.Open(driver, writerDSN)
+	if err != nil {
+		return nil, err
+	}
 
-	// Get queries for a single row and will load  the engire result all at once
-	Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	var reader *sqlx.DB
+	if readerDSN != "" {
+		reader, err = sqlx.Open(driver, readerDSN)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	// Exec executes a query that changes rows
-	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	// by default, always have the writer available
+	db := &Database{
+		writerDB: NewDBWrapper(writer),
+	}
 
-	// ExecTx executes a query that changes rows within a given transaction
-	ExecTx(ctx context.Context, tx *sqlx.Tx, query string, args ...interface{}) (sql.Result, error)
+	if reader != nil {
+		db.readerDB = &DBWrapper{db: reader}
+	} else {
+		db.readerDB = db.writerDB // Fallback to writer if no reader is provided
+	}
 
-	// BeginTx starts a new transaction
-	BeginTx(ctx context.Context) (*sqlx.Tx, error)
+	return db, nil
+}
 
-	// CommitTx commits the current transaction
-	CommitTx(tx *sqlx.Tx) error
+func (c *Database) WriteDB() *DBWrapper {
+	return c.writerDB
+}
 
-	// RollbackTx rolls back the current transaction
-	RollbackTx(tx *sqlx.Tx) error
-
-	// Close closes the database connection
-	Close() error
+func (c *Database) ReadDB() *DBWrapper {
+	return c.readerDB
 }
