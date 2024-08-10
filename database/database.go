@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/meowmix1337/go-core/derror"
 	"github.com/rs/zerolog/log"
 )
 
@@ -78,25 +79,30 @@ func (d *Database) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
 
 // Transaction abstracts transaction handling. It begins a transaction, executes the given
 // function, and commits or rolls back the transaction based on whether an error is returned.
-func Transaction(ctx context.Context, db Database, fn func(*sqlx.Tx) error) error {
+func Transaction(ctx context.Context, db *Database, fn func(*sqlx.Tx) error) error {
 	tx, err := db.BeginTx(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
+		// handle panic
 		if p := recover(); p != nil {
 			log.Err(err).Msg("panic happened, rolling back")
 			_ = tx.Rollback()
 			panic(p) // Re-throw panic after rollback
-		} else if err != nil {
-			log.Err(err).Msg("failed to commit transaction, rolling back")
-			_ = tx.Rollback() // err is non-nil; don't change it
-		} else {
-			err = tx.Commit() // If Commit returns error, update err
 		}
 	}()
 
 	err = fn(tx)
-	return err
+	if err != nil {
+		log.Err(err).Msg("failed to commit transaction, rolling back")
+		if rbErr := tx.Rollback(); rbErr != nil {
+			log.Err(rbErr).Msg("failed to roll back transaction")
+			return derror.New(ctx, derror.InternalServerCode, derror.InternalType, "error rolling back", rbErr).Wrap(err)
+		}
+		return err
+	}
+
+	return tx.Commit()
 }
