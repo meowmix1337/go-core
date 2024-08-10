@@ -96,13 +96,19 @@ func Transaction(ctx context.Context, db *Database, fn func(*sqlx.Tx) error) err
 
 	err = fn(tx)
 	if err != nil {
-		log.Err(err).Msg("failed to commit transaction, rolling back")
+		log.Err(err).Msg("query failed, attempt rolling back")
 		if rbErr := tx.Rollback(); rbErr != nil {
 			log.Err(rbErr).Msg("failed to roll back transaction")
 			return derror.New(ctx, derror.InternalServerCode, derror.InternalType, "error rolling back", rbErr).Wrap(err)
 		}
+		log.Info().Msg("roll back successful")
 		return err
 	}
 
-	return tx.Commit()
+	if commitErr := tx.Commit(); commitErr != nil {
+		log.Err(commitErr).Msg("failed to commit transaction")
+		return commitErr
+	}
+
+	return nil
 }
