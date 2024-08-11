@@ -11,10 +11,10 @@ import (
 // DBConnector is an interface that will allow users to use a writer or reader
 type DBConnector interface {
 	// WriteDB returns the DBWrapper that implements the DAL interface
-	WriteDB() *DBWrapper
+	WriteDB() *sqlx.DB
 
 	// ReadDB returns the DBWrapper that implements the DAL interface
-	ReadDB() *DBWrapper
+	ReadDB() *sqlx.DB
 
 	// BeginTx will create a new transaction using the writer
 	BeginTx(ctx context.Context) (*sqlx.Tx, error)
@@ -22,9 +22,8 @@ type DBConnector interface {
 
 // Database represents the writer and reader DBs
 type Database struct {
-	writeDB  *sqlx.DB
-	writerDB *DBWrapper
-	readerDB *DBWrapper
+	writerDB *sqlx.DB
+	readerDB *sqlx.DB
 }
 
 func NewDBConnector(driver, writerDSN, readerDSN string) (*Database, error) {
@@ -45,14 +44,13 @@ func NewDBConnector(driver, writerDSN, readerDSN string) (*Database, error) {
 
 	// by default, always have the writer available
 	db := &Database{
-		writerDB: NewDBWrapper(writer),
-		writeDB:  writer,
+		writerDB: writer,
 	}
 
 	log.Info().Msg("writer connected and initialized")
 
 	if reader != nil {
-		db.readerDB = &DBWrapper{db: reader}
+		db.readerDB = reader
 		log.Info().Msg("reader connected and initialized")
 	} else {
 		db.readerDB = db.writerDB // Fallback to writer if no reader is provided
@@ -63,23 +61,23 @@ func NewDBConnector(driver, writerDSN, readerDSN string) (*Database, error) {
 }
 
 // WriteDB returns the writer
-func (d *Database) WriteDB() *DBWrapper {
+func (d *Database) WriteDB() *sqlx.DB {
 	return d.writerDB
 }
 
 // ReadDB returns the reader, if no reader is available, this will point to the writer
-func (d *Database) ReadDB() *DBWrapper {
+func (d *Database) ReadDB() *sqlx.DB {
 	return d.readerDB
 }
 
 // Begin starts a new transaction
 func (d *Database) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
-	return d.writeDB.BeginTxx(ctx, nil)
+	return d.writerDB.BeginTxx(ctx, nil)
 }
 
 // Transaction abstracts transaction handling. It begins a transaction, executes the given
 // function, and commits or rolls back the transaction based on whether an error is returned.
-func Transaction(ctx context.Context, db *Database, fn func(*sqlx.Tx) error) error {
+func Transaction(ctx context.Context, db *Database, fn func(context.Context, *sqlx.Tx) error) error {
 	tx, err := db.BeginTx(ctx)
 	if err != nil {
 		return err
@@ -94,7 +92,7 @@ func Transaction(ctx context.Context, db *Database, fn func(*sqlx.Tx) error) err
 		}
 	}()
 
-	err = fn(tx)
+	err = fn(ctx, tx)
 	if err != nil {
 		log.Err(err).Msg("query failed, attempt rolling back")
 		if rbErr := tx.Rollback(); rbErr != nil {

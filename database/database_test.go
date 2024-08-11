@@ -36,8 +36,7 @@ func (s *DatabaseTestSuite) SetupSuite() {
 	}
 	sqlxDB := sqlx.NewDb(db, "mock")
 	s.mySQLClient = &Database{
-		writerDB: &DBWrapper{db: sqlxDB},
-		writeDB:  sqlxDB,
+		writerDB: sqlxDB,
 	}
 	s.mock = mock
 }
@@ -51,7 +50,7 @@ func (s *DatabaseTestSuite) TestDatabase_QueryRow() {
 			AddRow(1, "John Doe", "john.doe@example.com"))
 
 	// Call the QueryRow method
-	row := s.mySQLClient.WriteDB().QueryRow(context.Background(), "SELECT * FROM users WHERE id = ?", 1)
+	row := s.mySQLClient.WriteDB().QueryRowxContext(context.Background(), "SELECT * FROM users WHERE id = ?", 1)
 
 	// Verify that the result is correct
 	var user User
@@ -73,7 +72,7 @@ func (s *DatabaseTestSuite) TestDatabase_QueryRows() {
 			AddRow(2, "Jane Doe", "jane.doe@example.com"))
 
 	// Call the QueryRow method
-	rows, err := s.mySQLClient.WriteDB().QueryRows(context.Background(), "SELECT * FROM users")
+	rows, err := s.mySQLClient.WriteDB().QueryxContext(context.Background(), "SELECT * FROM users")
 	s.NoError(err)
 
 	// Verify that the result is correct
@@ -100,7 +99,7 @@ func (s *DatabaseTestSuite) TestDatabase_Get() {
 
 	// Call the QueryRow method
 	var user User
-	err := s.mySQLClient.WriteDB().Get(context.Background(), &user, "SELECT * FROM users WHERE id = ?", 1)
+	err := s.mySQLClient.WriteDB().GetContext(context.Background(), &user, "SELECT * FROM users WHERE id = ?", 1)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -120,7 +119,7 @@ func (s *DatabaseTestSuite) TestDatabase_Select() {
 
 	// Call the QueryRow method
 	var users []User
-	err := s.mySQLClient.WriteDB().Select(context.Background(), &users, "SELECT * FROM users")
+	err := s.mySQLClient.WriteDB().SelectContext(context.Background(), &users, "SELECT * FROM users")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -143,7 +142,7 @@ func (s *DatabaseTestSuite) TestDatabase_Exec() {
 		WillReturnResult(sqlmock.NewResult(1, 1)) // Assuming ID=1 and 1 row affected
 
 	args := []interface{}{userToInsert.Name, userToInsert.Email}
-	result, err := s.mySQLClient.WriteDB().Exec(context.Background(), "INSERT INTO users (name, email) VALUES (?, ?)", args...)
+	result, err := s.mySQLClient.WriteDB().ExecContext(context.Background(), "INSERT INTO users (name, email) VALUES (?, ?)", args...)
 	s.NoError(err)
 
 	id, err := result.LastInsertId()
@@ -163,7 +162,7 @@ func (s *DatabaseTestSuite) TestTransaction_Success() {
 	s.mock.ExpectBegin()
 	s.mock.ExpectCommit()
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := Transaction(context.Background(), s.mySQLClient, func(ctx context.Context, tx *sqlx.Tx) error {
 		return nil // Simulate a successful function
 	})
 	s.NoError(err)
@@ -175,7 +174,7 @@ func (s *DatabaseTestSuite) TestTransaction_Failure() {
 	s.mock.ExpectBegin()
 	s.mock.ExpectRollback()
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := Transaction(context.Background(), s.mySQLClient, func(ctx context.Context, tx *sqlx.Tx) error {
 		return errors.New("failed") // Simulate a failure function
 	})
 	s.Errorf(err, "failed")
@@ -196,7 +195,7 @@ func (s *DatabaseTestSuite) TestTransaction_Panic() {
 		}
 	}()
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := Transaction(context.Background(), s.mySQLClient, func(ctx context.Context, tx *sqlx.Tx) error {
 		panic("unexpected panic") // Simulate a panic
 	})
 	s.NoError(err)
@@ -206,7 +205,7 @@ func (s *DatabaseTestSuite) TestTransaction_BeginTxFail() {
 
 	s.mock.ExpectBegin().WillReturnError(errors.New("begin tx failed"))
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := Transaction(context.Background(), s.mySQLClient, func(ctx context.Context, tx *sqlx.Tx) error {
 		return nil // This should not be executed
 	})
 	s.Error(err)
@@ -220,7 +219,7 @@ func (s *DatabaseTestSuite) TestTransaction_CommitFail() {
 	s.mock.ExpectBegin()
 	s.mock.ExpectCommit().WillReturnError(commitErr)
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := Transaction(context.Background(), s.mySQLClient, func(ctx context.Context, tx *sqlx.Tx) error {
 		return nil // Simulate a successful function
 	})
 	s.Error(err)
