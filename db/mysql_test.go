@@ -1,9 +1,8 @@
-package database
+package db
 
 import (
 	"context"
 	"errors"
-	"log"
 	"regexp"
 	"testing"
 
@@ -20,8 +19,9 @@ type User struct {
 
 type DatabaseTestSuite struct {
 	suite.Suite
-	mySQLClient *Database
-	mock        sqlmock.Sqlmock
+	mysqlDB    *mySQL
+	mockWriter sqlmock.Sqlmock
+	mockReader sqlmock.Sqlmock
 }
 
 func TestDatabaseTestSuite(t *testing.T) {
@@ -30,79 +30,58 @@ func TestDatabaseTestSuite(t *testing.T) {
 
 func (s *DatabaseTestSuite) SetupSuite() {
 	// Set up the test
-	db, mock, err := sqlmock.New()
+	writeDB, mockWriter, err := sqlmock.New()
 	if err != nil {
 		s.T().Fatal(err)
 	}
-	sqlxDB := sqlx.NewDb(db, "mock")
-	s.mySQLClient = &Database{
-		writerDB: &DBWrapper{db: sqlxDB},
-		writeDB:  sqlxDB,
-	}
-	s.mock = mock
-}
+	writer := sqlx.NewDb(writeDB, "mock")
 
-func (s *DatabaseTestSuite) TestDatabase_QueryRow() {
-
-	// Define the expected query and result
-	s.mock.ExpectQuery(`SELECT \* FROM users WHERE id = \?`).
-		WithArgs(1).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
-			AddRow(1, "John Doe", "john.doe@example.com"))
-
-	// Call the QueryRow method
-	row := s.mySQLClient.WriteDB().QueryRow(context.Background(), "SELECT * FROM users WHERE id = ?", 1)
-
-	// Verify that the result is correct
-	var user User
-	err := row.Scan(&user.ID, &user.Name, &user.Email)
+	readDB, mockReader, err := sqlmock.New()
 	if err != nil {
-		log.Fatal(err)
+		s.T().Fatal(err)
 	}
-	if user.ID != 1 || user.Name != "John Doe" || user.Email != "john.doe@example.com" {
-		s.T().Errorf("Expected user %+v, got %+v", User{ID: 1, Name: "John Doe", Email: "john.doe@example.com"}, user)
+	reader := sqlx.NewDb(readDB, "mock")
+
+	s.mysqlDB = &mySQL{
+		baseDB: &baseDB{WriteDB: writer, ReadDB: reader},
 	}
-}
-
-func (s *DatabaseTestSuite) TestDatabase_QueryRows() {
-
-	// Define the expected query and result
-	s.mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM users")).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
-			AddRow(1, "John Doe", "john.doe@example.com").
-			AddRow(2, "Jane Doe", "jane.doe@example.com"))
-
-	// Call the QueryRow method
-	rows, err := s.mySQLClient.WriteDB().QueryRows(context.Background(), "SELECT * FROM users")
-	s.NoError(err)
-
-	// Verify that the result is correct
-	var users []User
-	for rows.Next() {
-		var user User
-		err := rows.Scan(&user.ID, &user.Name, &user.Email)
-		s.NoError(err)
-		users = append(users, user)
-	}
-
-	if len(users) != 2 {
-		s.T().Errorf("expected 2 users but got %v", len(users))
-	}
+	s.mockWriter = mockWriter
+	s.mockReader = mockReader
 }
 
 func (s *DatabaseTestSuite) TestDatabase_Get() {
 
 	// Define the expected query and result
-	s.mock.ExpectQuery(`SELECT \* FROM users WHERE id = \?`).
+	s.mockWriter.ExpectQuery(`SELECT \* FROM users WHERE id = \?`).
 		WithArgs(1).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
 			AddRow(1, "John Doe", "john.doe@example.com"))
 
 	// Call the QueryRow method
 	var user User
-	err := s.mySQLClient.WriteDB().Get(context.Background(), &user, "SELECT * FROM users WHERE id = ?", 1)
+	err := s.mysqlDB.Get(context.Background(), &user, "SELECT * FROM users WHERE id = ?", 1)
 	if err != nil {
-		log.Fatal(err)
+		s.T().Error(err)
+	}
+
+	if user.ID != 1 || user.Name != "John Doe" || user.Email != "john.doe@example.com" {
+		s.T().Errorf("Expected user %+v, got %+v", User{ID: 1, Name: "John Doe", Email: "john.doe@example.com"}, user)
+	}
+}
+
+func (s *DatabaseTestSuite) TestDatabase_Get_RO() {
+
+	// Define the expected query and result
+	s.mockReader.ExpectQuery(`SELECT \* FROM users WHERE id = \?`).
+		WithArgs(1).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
+			AddRow(1, "John Doe", "john.doe@example.com"))
+
+	// Call the QueryRow method
+	var user User
+	err := s.mysqlDB.Get_RO(context.Background(), &user, "SELECT * FROM users WHERE id = ?", 1)
+	if err != nil {
+		s.T().Error(err)
 	}
 
 	if user.ID != 1 || user.Name != "John Doe" || user.Email != "john.doe@example.com" {
@@ -113,16 +92,36 @@ func (s *DatabaseTestSuite) TestDatabase_Get() {
 func (s *DatabaseTestSuite) TestDatabase_Select() {
 
 	// Define the expected query and result
-	s.mock.ExpectQuery(`SELECT \* FROM users`).
+	s.mockWriter.ExpectQuery(`SELECT \* FROM users`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
 			AddRow(1, "John Doe", "john.doe@example.com").
 			AddRow(2, "Jane Doe", "jane.doe@example.com"))
 
 	// Call the QueryRow method
 	var users []User
-	err := s.mySQLClient.WriteDB().Select(context.Background(), &users, "SELECT * FROM users")
+	err := s.mysqlDB.Select(context.Background(), &users, "SELECT * FROM users")
 	if err != nil {
-		log.Fatal(err)
+		s.T().Error(err)
+	}
+
+	if len(users) != 2 {
+		s.T().Errorf("Expected 2 users, got %+v", len(users))
+	}
+}
+
+func (s *DatabaseTestSuite) TestDatabase_Select_RO() {
+
+	// Define the expected query and result
+	s.mockReader.ExpectQuery(`SELECT \* FROM users`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "email"}).
+			AddRow(1, "John Doe", "john.doe@example.com").
+			AddRow(2, "Jane Doe", "jane.doe@example.com"))
+
+	// Call the QueryRow method
+	var users []User
+	err := s.mysqlDB.Select_RO(context.Background(), &users, "SELECT * FROM users")
+	if err != nil {
+		s.T().Error(err)
 	}
 
 	if len(users) != 2 {
@@ -138,12 +137,12 @@ func (s *DatabaseTestSuite) TestDatabase_Exec() {
 	}
 
 	// Expectation: The INSERT statement will be called with specific arguments
-	s.mock.ExpectExec(regexp.QuoteMeta("INSERT INTO users (name, email) VALUES (?, ?)")).
+	s.mockWriter.ExpectExec(regexp.QuoteMeta("INSERT INTO users (name, email) VALUES (?, ?)")).
 		WithArgs(userToInsert.Name, userToInsert.Email).
 		WillReturnResult(sqlmock.NewResult(1, 1)) // Assuming ID=1 and 1 row affected
 
 	args := []interface{}{userToInsert.Name, userToInsert.Email}
-	result, err := s.mySQLClient.WriteDB().Exec(context.Background(), "INSERT INTO users (name, email) VALUES (?, ?)", args...)
+	result, err := s.mysqlDB.Exec(context.Background(), "INSERT INTO users (name, email) VALUES (?, ?)", args...)
 	s.NoError(err)
 
 	id, err := result.LastInsertId()
@@ -154,49 +153,49 @@ func (s *DatabaseTestSuite) TestDatabase_Exec() {
 	}
 
 	// Ensure all expectations are met
-	err = s.mock.ExpectationsWereMet()
+	err = s.mockWriter.ExpectationsWereMet()
 	s.NoError(err)
 }
 
 func (s *DatabaseTestSuite) TestTransaction_Success() {
 
-	s.mock.ExpectBegin()
-	s.mock.ExpectCommit()
+	s.mockWriter.ExpectBegin()
+	s.mockWriter.ExpectCommit()
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := s.mysqlDB.Transaction(context.Background(), func(ctx context.Context, tx Tx) error {
 		return nil // Simulate a successful function
 	})
 	s.NoError(err)
-	s.NoError(s.mock.ExpectationsWereMet())
+	s.NoError(s.mockWriter.ExpectationsWereMet())
 }
 
 func (s *DatabaseTestSuite) TestTransaction_Failure() {
 
-	s.mock.ExpectBegin()
-	s.mock.ExpectRollback()
+	s.mockWriter.ExpectBegin()
+	s.mockWriter.ExpectRollback()
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := s.mysqlDB.Transaction(context.Background(), func(ctx context.Context, tx Tx) error {
 		return errors.New("failed") // Simulate a failure function
 	})
 	s.Errorf(err, "failed")
-	s.NoError(s.mock.ExpectationsWereMet())
+	s.NoError(s.mockWriter.ExpectationsWereMet())
 }
 
 func (s *DatabaseTestSuite) TestTransaction_Panic() {
 
-	s.mock.ExpectBegin()
-	s.mock.ExpectRollback()
+	s.mockWriter.ExpectBegin()
+	s.mockWriter.ExpectRollback()
 
 	defer func() {
 		if r := recover(); r != nil {
 			s.Equal("unexpected panic", r)
-			s.NoError(s.mock.ExpectationsWereMet())
+			s.NoError(s.mockWriter.ExpectationsWereMet())
 		} else {
 			s.T().Errorf("expected panic, but code did not panic")
 		}
 	}()
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := s.mysqlDB.Transaction(context.Background(), func(ctx context.Context, tx Tx) error {
 		panic("unexpected panic") // Simulate a panic
 	})
 	s.NoError(err)
@@ -204,26 +203,26 @@ func (s *DatabaseTestSuite) TestTransaction_Panic() {
 
 func (s *DatabaseTestSuite) TestTransaction_BeginTxFail() {
 
-	s.mock.ExpectBegin().WillReturnError(errors.New("begin tx failed"))
+	s.mockWriter.ExpectBegin().WillReturnError(errors.New("begin tx failed"))
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := s.mysqlDB.Transaction(context.Background(), func(ctx context.Context, tx Tx) error {
 		return nil // This should not be executed
 	})
 	s.Error(err)
 	s.Equal("begin tx failed", err.Error())
-	s.NoError(s.mock.ExpectationsWereMet())
+	s.NoError(s.mockWriter.ExpectationsWereMet())
 }
 
 func (s *DatabaseTestSuite) TestTransaction_CommitFail() {
 
 	commitErr := errors.New("commit failed")
-	s.mock.ExpectBegin()
-	s.mock.ExpectCommit().WillReturnError(commitErr)
+	s.mockWriter.ExpectBegin()
+	s.mockWriter.ExpectCommit().WillReturnError(commitErr)
 
-	err := Transaction(context.Background(), s.mySQLClient, func(tx *sqlx.Tx) error {
+	err := s.mysqlDB.Transaction(context.Background(), func(ctx context.Context, tx Tx) error {
 		return nil // Simulate a successful function
 	})
 	s.Error(err)
 	s.Equal("commit failed", err.Error())
-	s.NoError(s.mock.ExpectationsWereMet())
+	s.NoError(s.mockWriter.ExpectationsWereMet())
 }
