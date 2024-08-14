@@ -25,7 +25,7 @@ type DB interface {
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 
 	// BeginTx will create a new transaction using the writer
-	BeginTx(ctx context.Context) (*Tx, error)
+	BeginTx(ctx context.Context) (Tx, error)
 
 	// Handles transactions start to finish
 	Transaction(ctx context.Context, fn func(ctx context.Context, tx Tx) error) error

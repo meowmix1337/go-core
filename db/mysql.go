@@ -12,7 +12,7 @@ type mySQL struct {
 	*baseDB
 }
 
-func NewMySQL(writerDSN, readerDSN string) *mySQL {
+func NewMySQL(writerDSN, readerDSN string) DB {
 	baseDB, err := newBaseDB("mysql", writerDSN, readerDSN)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to DB")
