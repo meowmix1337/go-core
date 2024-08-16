@@ -1,18 +1,20 @@
 package cache
 
+import "context"
+
 type Cache interface {
 	// Get retrieves data given a key
-	Get(key string) (interface{}, error)
+	Get(ctx context.Context, key string) (interface{}, error)
 
 	// Set adds the value for a given key
-	Set(key string, value interface{}, ttl int) error
+	Set(ctx context.Context, key string, value interface{}, ttl int) error
 
 	// Delete removes the item from the cache given the key
-	Delete(key string) error
+	Delete(ctx context.Context, key string) error
 
 	// Purge clear all items in the cache
-	Purge()
+	Purge(ctx context.Context)
 
 	// Size returns the number of elements in the cache
-	Size() int64
+	Size(ctx context.Context) int64
 }
