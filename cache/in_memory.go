@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -31,7 +32,7 @@ func NewInMemoryCache() *InMemoryCache {
 	}
 }
 
-func (c *InMemoryCache) Get(key string) (interface{}, error) {
+func (c *InMemoryCache) Get(ctx context.Context, key string) (interface{}, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -43,7 +44,7 @@ func (c *InMemoryCache) Get(key string) (interface{}, error) {
 	return item.value, nil
 }
 
-func (c *InMemoryCache) Set(key string, value interface{}, ttl int) error {
+func (c *InMemoryCache) Set(ctx context.Context, key string, value interface{}, ttl int) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -57,21 +58,21 @@ func (c *InMemoryCache) Set(key string, value interface{}, ttl int) error {
 	return nil
 }
 
-func (c *InMemoryCache) Delete(key string) error {
+func (c *InMemoryCache) Delete(ctx context.Context, key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.cache, key)
 	return nil
 }
 
-func (c *InMemoryCache) Purge() {
+func (c *InMemoryCache) Purge(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.cache = make(map[string]cacheItem)
 }
 
-func (c *InMemoryCache) Size() int64 {
+func (c *InMemoryCache) Size(ctx context.Context) int64 {
 	var size int64
 	for _, item := range c.cache {
 		if !item.isExpired() {
