@@ -11,7 +11,7 @@ type mySQLTx struct {
 	tx *sqlx.Tx
 }
 
-func NewMySQLTx(tx *sqlx.Tx) Tx {
+func NewMySQLTx(tx *sqlx.Tx) *mySQLTx {
 	return &mySQLTx{tx: tx}
 }
 
