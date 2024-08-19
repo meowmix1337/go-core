@@ -19,7 +19,8 @@ test:
 
 cover:
 	@echo "Running tests in directory '$(TEST_DIR)'"
-	go test $(TEST_DIR) -cover
+	go test $(TEST_DIR) -coverprofile=c.out
+	go tool cover -html="c.out"
 
 # Clean test cache
 clean:

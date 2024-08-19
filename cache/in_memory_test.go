@@ -14,7 +14,7 @@ type InMemoryCacheTestSuite struct {
 	cache *InMemoryCache
 }
 
-func TestDatabaseTestSuite(t *testing.T) {
+func TestInMemoryCacheSuite(t *testing.T) {
 	suite.Run(t, new(InMemoryCacheTestSuite))
 }
 
