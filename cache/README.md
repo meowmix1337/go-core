@@ -15,7 +15,7 @@ LRU Cache
 import "github.com/meowmix1337/go-core/cache"
 
 // set a default capacity
-cache := db.NewLRUCache(5000)
+cache := cache.NewLRUCache(5000)
 
 // no need to handle err since LRU won't return an error
 cache.Set(ctx, "key", "value", 60) // insert a cached item that has a time to live of 60 seconds
