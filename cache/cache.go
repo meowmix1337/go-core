@@ -16,5 +16,5 @@ type Cache interface {
 	Purge(ctx context.Context)
 
 	// Size returns the number of elements in the cache
-	Size(ctx context.Context) int64
+	Size(ctx context.Context) uint64
 }

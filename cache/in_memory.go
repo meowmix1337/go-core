@@ -2,33 +2,19 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"sync"
-	"time"
-)
-
-var (
-	CacheMissErr = errors.New("cache miss")
 )
 
 // InMemoryCache is a very dumb and simple cache
+// defer to LRU if possible unless you want pain
 type InMemoryCache struct {
-	cache map[string]cacheItem
+	cache map[string]*cacheItem
 	mu    sync.Mutex
-}
-
-type cacheItem struct {
-	value      interface{}
-	expiration int64
-}
-
-func (i *cacheItem) isExpired() bool {
-	return time.Now().After(time.Unix(i.expiration, 0))
 }
 
 func NewInMemoryCache() *InMemoryCache {
 	return &InMemoryCache{
-		cache: make(map[string]cacheItem),
+		cache: make(map[string]*cacheItem),
 	}
 }
 
@@ -48,10 +34,7 @@ func (c *InMemoryCache) Set(ctx context.Context, key string, value interface{}, 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	cacheItem := cacheItem{
-		value:      value,
-		expiration: time.Now().Add(time.Duration(ttl) * time.Second).Unix(),
-	}
+	cacheItem := newCacheItem(key, value, int64(ttl))
 
 	c.cache[key] = cacheItem
 
@@ -69,11 +52,11 @@ func (c *InMemoryCache) Purge(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.cache = make(map[string]cacheItem)
+	c.cache = make(map[string]*cacheItem)
 }
 
-func (c *InMemoryCache) Size(ctx context.Context) int64 {
-	var size int64
+func (c *InMemoryCache) Size(ctx context.Context) uint64 {
+	var size uint64
 	for _, item := range c.cache {
 		if !item.isExpired() {
 			size++
