@@ -1,4 +1,4 @@
-# database
+# Cache
 This is a interface to allow me to use a cache. LRU, simple, Redis or memcache
 
 ## Add the dependency
