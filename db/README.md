@@ -21,12 +21,12 @@ import "github.com/meowmix1337/go-core/database"
 db, err := db.NewMySQL(writerDSN, readerDSN)
 ```
 
-Postgress
+Postgres
 ```go
 import "github.com/meowmix1337/go-core/database"
 
 // readerDSN is optional and can be set to "".
-db, err := database.NewPostgress(writerDSN, readerDSN)
+db, err := db.NewPostgres(writerDSN, readerDSN)
 ```
 
 Example Repo
