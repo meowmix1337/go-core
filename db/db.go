@@ -6,6 +6,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 type DB interface {
