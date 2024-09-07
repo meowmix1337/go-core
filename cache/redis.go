@@ -12,16 +12,22 @@ type redisCache struct {
 	client *redis.Client
 }
 
-func NewRedisCache(addr, password string, db int) *redisCache {
+func NewRedisCache(addr, password string, db int) (*redisCache, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
 		DB:       db,
 	})
 
+	_, err := client.Ping(context.Background()).Result()
+	if err != nil {
+		log.Err(err).Msg("error connecting to redis")
+		return nil, err
+	}
+
 	return &redisCache{
 		client: client,
-	}
+	}, nil
 }
 
 // Get retrieves data given a key
