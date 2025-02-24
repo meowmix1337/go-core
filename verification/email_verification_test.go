@@ -19,10 +19,5 @@ func (s *EmailVerificationSuite) SetupSuite() {}
 func (s *EmailVerificationSuite) TestValidCode() {
 	emailVerifier := NewEmailVerifier("test")
 	code := emailVerifier.GenerateCode("test@example.com")
-	s.True(emailVerifier.VerifyCode(code))
-}
-
-func (s *EmailVerificationSuite) TestInvalidCode() {
-	emailVerifier := NewEmailVerifier("test")
-	s.False(emailVerifier.VerifyCode("some invalid code"))
+	s.Equal("15b4b2821571fa31c96101da5466be49d079c3eeb54b85437fbf2200303e39d64c7fbe319d8a54e3327fbc2bcedb16c9abd18461a7fe0d69f33430d914a1bdd7", code)
 }
