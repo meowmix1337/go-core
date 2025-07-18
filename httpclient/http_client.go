@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/meowmix1337/go-core/derror"
 )
 
 type HttpClient interface {
@@ -29,7 +27,7 @@ func (c *httpClient) Request(ctx context.Context, method string, endpoint string
 
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return nil, derror.New(ctx, derror.InternalServerCode, derror.InternalType, "failed to create new request", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	if queryParams != nil {
@@ -43,7 +41,7 @@ func (c *httpClient) Request(ctx context.Context, method string, endpoint string
 	if payload != nil {
 		jsonBytes, err := json.Marshal(payload)
 		if err != nil {
-			return nil, derror.New(ctx, derror.InternalServerCode, derror.InternalType, "failed to marshal the payload", err)
+			return nil, fmt.Errorf("failed to marshal payload: %w", err)
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(jsonBytes))
 		req.ContentLength = int64(len(jsonBytes))
@@ -51,12 +49,12 @@ func (c *httpClient) Request(ctx context.Context, method string, endpoint string
 
 	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
-		return nil, derror.New(ctx, derror.InternalServerCode, derror.InternalType, "failed to do request", err)
+		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 
 	// Check the response status code
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return resp, derror.New(ctx, derror.InternalServerCode, derror.InternalType, "request response received a bad status code", errors.New("bad response code"))
+		return resp, fmt.Errorf("request failed with status code %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	return resp, nil
