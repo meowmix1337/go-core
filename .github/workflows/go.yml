@@ -19,11 +19,11 @@ jobs:
       matrix:
         module:
           - database
-          - api_client
+          - apiclient
           - cache
           - db
-          - http_client
-          - http_util
+          - httpclient
+          - httputil
           - verification
 
     name: Test ${{ matrix.module }}
