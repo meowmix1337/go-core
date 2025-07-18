@@ -24,7 +24,7 @@ func TestDo_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL), apiclient.WithAuthorization("test-token"))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL), apiclient.WithAuthorization("test-token"))
 
 	var result map[string]string
 	err := client.Do(context.Background(), apiclient.Request{
@@ -45,7 +45,7 @@ func TestDo_Non2xxStatusCode(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	err := client.Do(context.Background(), apiclient.Request{
 		Method:   apiclient.MethodGet,
@@ -65,7 +65,7 @@ func TestDo_InvalidJSONResponse(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	var result map[string]string
 	err := client.Do(context.Background(), apiclient.Request{
@@ -78,7 +78,7 @@ func TestDo_InvalidJSONResponse(t *testing.T) {
 }
 
 func TestDo_NetworkError(t *testing.T) {
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL("http://invalid-url"))
+	client := apiclient.New(apiclient.WithBaseURL("http://invalid-url"))
 
 	err := client.Do(context.Background(), apiclient.Request{
 		Method:   apiclient.MethodGet,
@@ -101,7 +101,7 @@ func TestDo_RequestBody(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	var result map[string]string
 	err := client.Do(context.Background(), apiclient.Request{
@@ -123,7 +123,7 @@ func TestDo_DefaultHeaders(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	err := client.Do(context.Background(), apiclient.Request{
 		Method:   apiclient.MethodGet,
@@ -145,7 +145,7 @@ func TestGet(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	var result map[string]string
 	err := client.Get(context.Background(), "/test-endpoint", map[string]string{"key": "value"}, nil, &result)
@@ -167,7 +167,7 @@ func TestPost(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	var result map[string]string
 	err := client.Post(context.Background(), "/test-endpoint", map[string]string{"key": "value"}, nil, &result)
@@ -189,7 +189,7 @@ func TestPut(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	var result map[string]string
 	err := client.Put(context.Background(), "/test-endpoint", map[string]string{"key": "value"}, nil, &result)
@@ -209,7 +209,7 @@ func TestDelete(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := apiclient.NewAPIClient(apiclient.WithBaseURL(ts.URL))
+	client := apiclient.New(apiclient.WithBaseURL(ts.URL))
 
 	var result map[string]string
 	err := client.Delete(context.Background(), "/test-endpoint", nil, &result)

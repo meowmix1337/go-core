@@ -50,8 +50,8 @@ func WithAuthorization(token string) Option {
 	}
 }
 
-// NewAPIClient creates a new API client with default configuration
-func NewAPIClient(opts ...Option) *APIClient {
+// New creates a new API client with default configuration
+func New(opts ...Option) *APIClient {
 	client := &APIClient{
 		httpClient: &http.Client{
 			Timeout: time.Second * 30,
