@@ -1,4 +1,4 @@
-module github.com/dvan/derror/database
+module github.com/meowmix1337/go-core/database
 
 go 1.24.0
 
