@@ -3,12 +3,14 @@ package database
 import (
 	"context"
 	"fmt"
+
+	"github.com/rs/zerolog"
 )
 
-// RunInTransaction runs a function within a database transaction.
+// WithTransaction runs a function within a database transaction.
 // If the function returns an error, the transaction is rolled back.
 // Otherwise, the transaction is committed.
-func (m *Manager) RunInTransaction(ctx context.Context, fn func(tx Queryer) error) error {
+func (m *Manager) WithTransaction(ctx context.Context, fn func(tx Queryer) error) (err error) {
 	tx, err := m.writer.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -16,12 +18,20 @@ func (m *Manager) RunInTransaction(ctx context.Context, fn func(tx Queryer) erro
 
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				zerolog.Ctx(ctx).Error().Err(rbErr).Msg("rollback failed after panic")
+			}
 			panic(p) // re-panic after rollback
 		} else if err != nil {
-			tx.Rollback() // err is non-nil; don't change it
+			if rbErr := tx.Rollback(); rbErr != nil {
+				err = fmt.Errorf("transaction failed: %v, and rollback failed: %w", err, rbErr)
+			} else {
+				err = fmt.Errorf("transaction failed: %w", err)
+			}
 		} else {
-			err = tx.Commit() // err is nil; if Commit returns error, update err
+			if cErr := tx.Commit(); cErr != nil {
+				err = fmt.Errorf("failed to commit transaction: %w", cErr)
+			}
 		}
 	}()
 
