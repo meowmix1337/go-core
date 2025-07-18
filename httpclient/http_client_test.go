@@ -92,7 +92,7 @@ func TestPost(t *testing.T) {
 	// Create a test server to handle requests
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			t.Errorf("expected GET request, got %s", r.Method)
+			t.Errorf("expected POST request, got %s", r.Method)
 		}
 		if r.URL.Path != "/api/data" {
 			t.Errorf("expected URL path /api/data, got %s", r.URL.Path)
@@ -145,7 +145,7 @@ func TestPost(t *testing.T) {
 				t.Errorf("expected no error, got %v", err)
 			}
 			if resp.StatusCode != http.StatusCreated {
-				t.Errorf("expected status code %d, got %d", http.StatusOK, resp.StatusCode)
+				t.Errorf("expected status code %d, got %d", http.StatusCreated, resp.StatusCode)
 			}
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -183,6 +183,6 @@ func TestRequest_ErrorStatusCode(t *testing.T) {
 	}
 
 	assert.NotEmpty(t, err)
-	assert.Equal(t, "code=500, type=INTERNAL_ERROR, message=request response received a bad status code, err=bad response code", err.Error())
+	assert.Equal(t, "request failed with status code 500: Internal Server Error", err.Error())
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
