@@ -1,3 +1,3 @@
 # go-core
 
-General go core library for my personal use and learning
+General go core library for my personal use and learnings
