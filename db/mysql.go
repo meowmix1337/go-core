@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
-	"github.com/meowmix1337/go-core/derror"
 	"github.com/rs/zerolog/log"
 )
 
@@ -79,7 +79,7 @@ func (m *mySQL) Transaction(ctx context.Context, fn func(ctx context.Context, tx
 		log.Err(err).Msg("query failed, attempt rolling back")
 		if rbErr := tx.Rollback(); rbErr != nil {
 			log.Err(rbErr).Msg("failed to roll back transaction")
-			return derror.New(ctx, derror.InternalServerCode, derror.InternalType, "error rolling back", rbErr).Wrap(err)
+			return fmt.Errorf("failed to roll back transaction: %w", rbErr)
 		}
 		log.Info().Msg("roll back successful")
 		return err

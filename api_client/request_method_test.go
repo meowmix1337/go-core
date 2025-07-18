@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	apiclient "github.com/meowmix1337/go-core/api_client"
+	"github.com/meowmix1337/go-core/apiclient"
 	"github.com/stretchr/testify/assert"
 )
 
