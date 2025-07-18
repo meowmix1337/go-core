@@ -9,6 +9,16 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// Queryer is an interface for query operations.
+type Queryer interface {
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	NamedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error)
+}
+
+var _ Queryer = (*sqlx.DB)(nil)
+
 // Manager is a database manager that provides reader and writer capabilities.
 // It uses sqlx for database operations.
 type Manager struct {
@@ -80,6 +90,41 @@ func NewManager(driverName string, writerCfg Config, readerCfg *Config, opts ...
 	return m, nil
 }
 
+// NewManagerWithDB creates a new database manager with existing database connections.
+// This is useful for testing with mock database connections.
+func NewManagerWithDB(driverName string, writerDB *sqlx.DB, readerDB *sqlx.DB, opts ...Option) (*Manager, error) {
+	m := &Manager{
+		driverName:      driverName,
+		maxOpenConns:    defaultMaxOpenConns,
+		maxIdleConns:    defaultMaxIdleConns,
+		connMaxLifetime: defaultConnMaxLifetime,
+		connMaxIdleTime: defaultConnMaxIdleTime,
+		queryTimeout:    defaultQueryTimeout,
+	}
+
+	for _, opt := range opts {
+		opt(m)
+	}
+
+	m.writer = writerDB
+	m.writer.SetMaxOpenConns(m.maxOpenConns)
+	m.writer.SetMaxIdleConns(m.maxIdleConns)
+	m.writer.SetConnMaxLifetime(m.connMaxLifetime)
+	m.writer.SetConnMaxIdleTime(m.connMaxIdleTime)
+
+	if readerDB == nil {
+		m.reader = m.writer
+	} else {
+		m.reader = readerDB
+		m.reader.SetMaxOpenConns(m.maxOpenConns)
+		m.reader.SetMaxIdleConns(m.maxIdleConns)
+		m.reader.SetConnMaxLifetime(m.connMaxLifetime)
+		m.reader.SetConnMaxIdleTime(m.connMaxIdleTime)
+	}
+
+	return m, nil
+}
+
 // Reader returns the reader database connection.
 func (m *Manager) Reader() *sqlx.DB {
 	return m.reader
@@ -99,11 +144,4 @@ func (m *Manager) Close() error {
 		return fmt.Errorf("failed to close reader database: %w", err)
 	}
 	return nil
-}
-
-// Queryer is an interface for query operations.
-type Queryer interface {
-	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
